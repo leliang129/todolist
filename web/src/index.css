@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Karla:wght@400;500;600;700&display=swap');
+
+:root {
+  color-scheme: light;
+  font-family: "Karla", "Noto Sans", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --bg: #eef3fb;
+  --sidebar: #f5f7fa;
+  --panel: #ffffff;
+  --primary: #4a90e2;
+  --primary-strong: #2e6cdd;
+  --text: #1c2a3a;
+  --muted: #6b778c;
+  --line: #e2e8f3;
+  --success: #26b36a;
+  --warning: #f29d4b;
+  --danger: #f25d5d;
+  --shadow-lg: 0 20px 50px rgba(17, 30, 53, 0.12);
+  --shadow-sm: 0 10px 25px rgba(17, 30, 53, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(74, 144, 226, 0.16) 1px,
+      transparent 0
+    ),
+    linear-gradient(135deg, rgba(74, 144, 226, 0.12), transparent 45%);
+  background-size: 28px 28px, cover;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 85% 10%, rgba(74, 144, 226, 0.2), transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}

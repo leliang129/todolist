@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.env.*
+.git
+.gitignore
+node_modules
+web/node_modules
+web/dist

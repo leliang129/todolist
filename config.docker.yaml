@@ -1,0 +1,13 @@
+mysql:
+  host: db
+  port: 3306
+  username: todo
+  password: todo
+  database: todo
+
+jwt_secret: change-me
+jwt_algorithm: HS256
+jwt_expires_in: 86400
+
+cors_origins:
+  - http://localhost:5173
