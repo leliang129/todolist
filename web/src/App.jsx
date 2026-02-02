@@ -21,9 +21,10 @@ import {
   PlusOutlined,
   SearchOutlined,
   SortAscendingOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { ensureAuth } from './api/auth'
+import { login, validateToken } from './api/auth'
 import { del, get, post, put } from './api/client'
 import './App.css'
 
@@ -66,9 +67,14 @@ function App() {
   const [filterKey, setFilterKey] = useState('all')
   const [sortKey, setSortKey] = useState('created_at')
   const [modalOpen, setModalOpen] = useState(false)
+  const [accountModalOpen, setAccountModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [ready, setReady] = useState(false)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   const [form] = Form.useForm()
+  const [authForm] = Form.useForm()
+  const [accountForm] = Form.useForm()
 
   const categoryMap = useMemo(() => {
     const map = new Map()
@@ -99,6 +105,17 @@ function App() {
     ]
   }, [overviewTodos])
 
+  const handleAuthError = (err) => {
+    if (err?.code === 401 || err?.code === 40101) {
+      setAuthenticated(false)
+      setReady(false)
+      setCurrentUser(null)
+      messageApi.error('登录失效，请重新登录')
+      return true
+    }
+    return false
+  }
+
   const loadTodos = async () => {
     const params = {
       page: 1,
@@ -118,31 +135,53 @@ function App() {
       params.due = 'week'
       params.status = 'todo'
     }
-    const data = await get('/todos', params)
-    setTodos(data.items || [])
+    try {
+      const data = await get('/todos', params)
+      setTodos(data.items || [])
+    } catch (err) {
+      if (!handleAuthError(err)) throw err
+    }
   }
 
   const loadOverview = async () => {
-    const data = await get('/todos', { page: 1, page_size: 100, sort_by: 'created_at', sort_order: 'desc' })
-    setOverviewTodos(data.items || [])
+    try {
+      const data = await get('/todos', { page: 1, page_size: 100, sort_by: 'created_at', sort_order: 'desc' })
+      setOverviewTodos(data.items || [])
+    } catch (err) {
+      if (!handleAuthError(err)) throw err
+    }
   }
 
   const loadCategories = async () => {
-    const data = await get('/categories')
-    setCategories(data || [])
+    try {
+      const data = await get('/categories')
+      setCategories(data || [])
+    } catch (err) {
+      if (!handleAuthError(err)) throw err
+    }
   }
 
   const loadStats = async () => {
-    const data = await get('/stats/summary')
-    setStats(data || { total_todos: 0, today_completed: 0, week_completion_rate: 0 })
+    try {
+      const data = await get('/stats/summary')
+      setStats(data || { total_todos: 0, today_completed: 0, week_completion_rate: 0 })
+    } catch (err) {
+      if (!handleAuthError(err)) throw err
+    }
   }
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        await ensureAuth()
-        await Promise.all([loadCategories(), loadStats(), loadOverview()])
-        await loadTodos()
+        const user = await validateToken()
+        if (!user) {
+          setAuthenticated(false)
+          setReady(true)
+          return
+        }
+        setAuthenticated(true)
+        setCurrentUser(user)
+        await Promise.all([loadCategories(), loadStats(), loadOverview(), loadTodos()])
         setReady(true)
       } catch (err) {
         messageApi.error('后端连接失败，请确认服务已启动')
@@ -152,12 +191,12 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !authenticated) return
     const handler = setTimeout(() => {
       Promise.all([loadTodos(), loadOverview()]).catch(() => {})
     }, 300)
     return () => clearTimeout(handler)
-  }, [ready, searchValue, filterKey, sortKey])
+  }, [ready, authenticated, searchValue, filterKey, sortKey])
 
   const getDueState = (dateStr) => {
     if (!dateStr) return null
@@ -169,18 +208,30 @@ function App() {
 
   const handleToggle = async (item) => {
     const next = item.status === 'done' ? 'todo' : 'done'
-    await put(`/todos/${item.id}`, { status: next })
-    await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    try {
+      await put(`/todos/${item.id}`, { status: next })
+      await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    } catch (err) {
+      handleAuthError(err)
+    }
   }
 
   const handleDelete = async (item) => {
-    await del(`/todos/${item.id}`)
-    await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    try {
+      await del(`/todos/${item.id}`)
+      await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    } catch (err) {
+      handleAuthError(err)
+    }
   }
 
   const handleClearDone = async () => {
-    await del('/todos/clear-done')
-    await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    try {
+      await del('/todos/clear-done')
+      await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    } catch (err) {
+      handleAuthError(err)
+    }
   }
 
   const openCreate = () => {
@@ -207,13 +258,80 @@ function App() {
       ...values,
       due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
     }
-    if (editing) {
-      await put(`/todos/${editing.id}`, payload)
-    } else {
-      await post('/todos', payload)
+    try {
+      if (editing) {
+        await put(`/todos/${editing.id}`, payload)
+      } else {
+        await post('/todos', payload)
+      }
+      setModalOpen(false)
+      await Promise.all([loadTodos(), loadStats(), loadOverview()])
+    } catch (err) {
+      handleAuthError(err)
     }
-    setModalOpen(false)
-    await Promise.all([loadTodos(), loadStats(), loadOverview()])
+  }
+
+  const submitAuth = async () => {
+    const values = await authForm.validateFields()
+    try {
+      await login(values.username, values.password)
+      setAuthenticated(true)
+      const user = await validateToken()
+      setCurrentUser(user)
+      await Promise.all([loadCategories(), loadStats(), loadOverview(), loadTodos()])
+      setReady(true)
+      messageApi.success('登录成功')
+    } catch (err) {
+      messageApi.error('登录失败，请检查账号或密码')
+    }
+  }
+
+  const openAccountModal = () => {
+    accountForm.resetFields()
+    setAccountModalOpen(true)
+  }
+
+  const submitAccount = async () => {
+    const values = await accountForm.validateFields()
+    try {
+      await post('/users', values)
+      messageApi.success('账号创建成功')
+      setAccountModalOpen(false)
+    } catch (err) {
+      if (!handleAuthError(err)) {
+        messageApi.error('创建账号失败')
+      }
+    }
+  }
+
+  if (ready && !authenticated) {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <div className="auth-brand">Todo List</div>
+          <div className="auth-subtitle">请登录以继续使用</div>
+          <Form layout="vertical" form={authForm}>
+            <Form.Item
+              name="username"
+              label="用户名"
+              rules={[{ required: true, message: '请输入用户名' }]}
+            >
+              <Input placeholder="用户名" />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: true, message: '请输入密码' }]}
+            >
+              <Input.Password placeholder="密码" />
+            </Form.Item>
+            <Button type="primary" block onClick={submitAuth}>
+              登录
+            </Button>
+          </Form>
+        </div>
+      </div>
+    )
   }
 
   const renderTodoItem = (item) => {
@@ -382,6 +500,11 @@ function App() {
                 排序
               </Button>
             </Dropdown>
+            {currentUser?.role === 'superadmin' && (
+              <Button icon={<UserAddOutlined />} className="ghost-btn" onClick={openAccountModal}>
+                新增账号
+              </Button>
+            )}
           </div>
           <button type="button" className="clear-btn" onClick={handleClearDone}>
             清空已完成
@@ -399,7 +522,15 @@ function App() {
 
           <div className={`list-body ${showList ? 'has-list' : ''}`}>
             {todos.length === 0 && (
-              <div className="empty-state">
+              <div
+                className="empty-state"
+                role="button"
+                tabIndex={0}
+                onClick={openCreate}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') openCreate()
+                }}
+              >
                 <div className="empty-icon">＋</div>
                 <div className="empty-text">暂无待办，点击新增开始吧～</div>
               </div>
@@ -446,6 +577,46 @@ function App() {
               allowClear
               placeholder="选择分类（可选）"
               options={categories.map((item) => ({ label: item.name, value: item.id }))}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="新增账号"
+        open={accountModalOpen}
+        onOk={submitAccount}
+        onCancel={() => setAccountModalOpen(false)}
+        okText="创建"
+        cancelText="取消"
+      >
+        <Form layout="vertical" form={accountForm} initialValues={{ role: 'user' }}>
+          <Form.Item
+            name="username"
+            label="用户名"
+            rules={[{ required: true, message: '请输入用户名' }]}
+          >
+            <Input placeholder="用户名" />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label="密码"
+            rules={[
+              { required: true, message: '请输入密码' },
+              { min: 6, message: '至少 6 位' },
+            ]}
+          >
+            <Input.Password placeholder="密码（6-72 位）" />
+          </Form.Item>
+          <Form.Item name="email" label="邮箱">
+            <Input placeholder="邮箱（可选）" />
+          </Form.Item>
+          <Form.Item name="role" label="角色">
+            <Select
+              options={[
+                { label: '普通用户', value: 'user' },
+                { label: '超管', value: 'superadmin' },
+              ]}
             />
           </Form.Item>
         </Form>

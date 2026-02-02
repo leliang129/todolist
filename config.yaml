@@ -18,3 +18,8 @@ jwt_expires_in: 86400
 # CORS origins (list)
 cors_origins:
   - http://localhost:5173
+
+# Default superadmin (created if not exists)
+admin_username: admin
+admin_password: Admin@123456
+admin_email: admin@example.com

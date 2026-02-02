@@ -12,6 +12,9 @@ class Settings(BaseModel):
     jwt_algorithm: str = "HS256"
     jwt_expires_in: int = 86400
     cors_origins: List[str] = ["http://localhost:5173"]
+    admin_username: str = "admin"
+    admin_password: str = "Admin@123456"
+    admin_email: str | None = None
 
 
 def _load_yaml_config() -> dict:

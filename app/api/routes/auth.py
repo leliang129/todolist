@@ -12,10 +12,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register")
 def register(payload: RegisterIn, db: Session = Depends(get_db)):
-    if get_user_by_username(db, payload.username):
-        return error(40901, "username_exists", status_code=409)
-    user = create_user(db, payload.username, payload.password, payload.email)
-    return ok({"id": user.id, "username": user.username})
+    return error(40301, "registration_disabled", status_code=403)
 
 
 @router.post("/login")
@@ -33,6 +30,7 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
                 "id": user.id,
                 "username": user.username,
                 "avatar_url": user.avatar_url or "",
+                "role": user.role,
             },
         }
     )

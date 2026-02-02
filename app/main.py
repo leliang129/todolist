@@ -6,7 +6,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.config import get_settings
-from app.core.database import Base, engine
+from sqlalchemy import inspect, text
+from app.core.database import Base, engine, SessionLocal
+from app.models.user import User
+from app.crud.user import get_user_by_username, create_user
 from app.api.routes import auth, users, categories, todos, trash, stats
 
 settings = get_settings()
@@ -51,3 +54,38 @@ def validation_exception_handler(request: Request, exc: RequestValidationError):
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    ensure_user_role_column()
+    ensure_superadmin()
+
+
+def ensure_user_role_column():
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = [col["name"] for col in inspector.get_columns("users")]
+    if "role" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'user'"))
+
+
+def ensure_superadmin():
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.role == "superadmin").first()
+        if user:
+            return
+        existing = get_user_by_username(db, settings.admin_username)
+        if existing:
+            existing.role = "superadmin"
+            db.add(existing)
+            db.commit()
+            return
+        create_user(
+            db,
+            settings.admin_username,
+            settings.admin_password,
+            settings.admin_email,
+            role="superadmin",
+        )
+    finally:
+        db.close()

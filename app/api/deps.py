@@ -26,3 +26,9 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="user_not_found")
     return user
+
+
+def require_superadmin(user=Depends(get_current_user)):
+    if getattr(user, "role", None) != "superadmin":
+        raise HTTPException(status_code=403, detail="permission_denied")
+    return user

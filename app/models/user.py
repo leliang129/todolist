@@ -9,6 +9,7 @@ class User(Base):
     username = Column(String(64), unique=True, index=True, nullable=False)
     email = Column(String(128), nullable=True)
     avatar_url = Column(String(255), nullable=True)
+    role = Column(String(32), nullable=False, default="user")
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

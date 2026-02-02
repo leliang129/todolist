@@ -12,11 +12,12 @@ def get_user(db: Session, user_id: str):
     return db.query(User).filter(User.id == user_id).first()
 
 
-def create_user(db: Session, username: str, password: str, email: str | None):
+def create_user(db: Session, username: str, password: str, email: str | None, role: str | None = None):
     user = User(
         id=str(uuid.uuid4()),
         username=username,
         email=email,
+        role=role or "user",
         password_hash=hash_password(password),
     )
     db.add(user)

@@ -11,3 +11,7 @@ jwt_expires_in: 86400
 
 cors_origins:
   - http://localhost:5173
+
+admin_username: admin
+admin_password: Admin@123456
+admin_email: admin@example.com
