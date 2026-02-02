@@ -13,11 +13,7 @@ services:
       - db_data:/var/lib/mysql
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: /api/v1
+    image: todolist-app:latest
     depends_on:
       - db
     ports:

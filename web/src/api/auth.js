@@ -1,4 +1,4 @@
-import { getToken, setToken, post } from './client'
+import { clearToken, get, getToken, post, setToken } from './client'
 
 const DEMO_USER = {
   username: 'demo',
@@ -8,7 +8,14 @@ const DEMO_USER = {
 
 export async function ensureAuth() {
   const token = getToken()
-  if (token) return token
+  if (token) {
+    try {
+      await get('/users/me')
+      return token
+    } catch (_) {
+      clearToken()
+    }
+  }
   try {
     const login = await post('/auth/login', {
       username: DEMO_USER.username,

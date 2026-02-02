@@ -9,6 +9,10 @@ export function setToken(token) {
   localStorage.setItem(TOKEN_KEY, token)
 }
 
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
 function buildQuery(params) {
   const entries = Object.entries(params || {})
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -31,11 +35,13 @@ export async function request(path, options = {}) {
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
+    if (response.status === 401) clearToken()
     const error = new Error(payload?.message || 'request_failed')
     error.code = payload?.code || response.status
     throw error
   }
   if (payload?.code !== 0) {
+    if (payload?.code === 40101) clearToken()
     const error = new Error(payload?.message || 'request_failed')
     error.code = payload?.code
     throw error
