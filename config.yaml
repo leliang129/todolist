@@ -23,3 +23,4 @@ cors_origins:
 admin_username: admin
 admin_password: Admin@123456
 admin_email: admin@example.com
+admin_force_reset: true

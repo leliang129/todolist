@@ -15,6 +15,7 @@ class Settings(BaseModel):
     admin_username: str = "admin"
     admin_password: str = "Admin@123456"
     admin_email: str | None = None
+    admin_force_reset: bool = False
 
 
 def _load_yaml_config() -> dict:

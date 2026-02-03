@@ -10,6 +10,7 @@ from sqlalchemy import inspect, text
 from app.core.database import Base, engine, SessionLocal
 from app.models.user import User
 from app.crud.user import get_user_by_username, create_user
+from app.core.security import hash_password
 from app.api.routes import auth, users, categories, todos, trash, stats
 
 settings = get_settings()
@@ -73,10 +74,19 @@ def ensure_superadmin():
     try:
         user = db.query(User).filter(User.role == "superadmin").first()
         if user:
+            if settings.admin_force_reset:
+                user.username = settings.admin_username
+                user.email = settings.admin_email
+                user.password_hash = hash_password(settings.admin_password)
+                db.add(user)
+                db.commit()
             return
         existing = get_user_by_username(db, settings.admin_username)
         if existing:
             existing.role = "superadmin"
+            if settings.admin_force_reset:
+                existing.email = settings.admin_email
+                existing.password_hash = hash_password(settings.admin_password)
             db.add(existing)
             db.commit()
             return
